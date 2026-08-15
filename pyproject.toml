@@ -79,6 +79,7 @@ extra_checks = true
 module = [
     "flwr.*",
     "opacus.*",
+    "sklearn.*",
     "torch.*",
 ]
 ignore_missing_imports = true
