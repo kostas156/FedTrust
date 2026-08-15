@@ -5,6 +5,8 @@ from fedtrust.core.models import EvaluationContext, EvaluationStatus
 from fedtrust.core.runner import EvaluationRunner
 from fedtrust.evaluation.classification import ClassificationEvaluator
 from fedtrust.privacy.membership_inference import MembershipInferenceEvaluator
+from fedtrust.reporting.builder import AssessmentBuilder
+from fedtrust.reporting.models import AssessmentSeverity
 
 
 def test_package_import() -> None:
@@ -65,3 +67,48 @@ def test_membership_inference_evaluation_pipeline() -> None:
     assert report.metadata["non_member_count"] == 2
     assert report.duration_seconds is not None
     assert report.duration_seconds >= 0
+
+
+def test_assessment_reporting_pipeline() -> None:
+    """Evaluation results are transformed into a trustworthiness assessment."""
+    context = EvaluationContext(
+        model_name="assessment_integration_model",
+        dataset_name="assessment_integration_dataset",
+    )
+
+    classification_evaluator = ClassificationEvaluator(
+        y_true=[0, 1, 1, 0, 1],
+        y_pred=[0, 1, 0, 0, 1],
+    )
+
+    mia_evaluator = MembershipInferenceEvaluator(
+        membership_labels=[1, 1, 0, 0],
+        attack_scores=[0.9, 0.8, 0.2, 0.1],
+    )
+
+    runner = EvaluationRunner()
+
+    classification_report = runner.run(
+        classification_evaluator,
+        context,
+    )
+
+    mia_report = runner.run(mia_evaluator, context)
+
+    assessment = AssessmentBuilder().build(
+        [
+            classification_report,
+            mia_report,
+        ]
+    )
+
+    assert assessment.title == "FedTrust Trustworthiness Assessment"
+    assert len(assessment.sections) == 2
+    assert assessment.overall_severity is AssessmentSeverity.CRITICAL
+
+    privacy_section = next(
+        section for section in assessment.sections if section.name == "membership_inference"
+    )
+
+    assert privacy_section.findings[0].severity is AssessmentSeverity.CRITICAL
+    assert len(privacy_section.recommendations) == 1
