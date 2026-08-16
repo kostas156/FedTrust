@@ -33,11 +33,14 @@ class ChartGenerator:
         false_positive_rate, true_positive_rate, _ = roc_curve(labels, scores)
 
         figure, axis = plt.subplots(figsize=(7, 5))
+        axis.plot(false_positive_rate, true_positive_rate, label="Membership inference attack")
         axis.plot([0, 1], [0, 1], linestyle="--", label="Random baseline")
 
         axis.set_title(specification.title)
         axis.set_xlabel("False Positive Rate")
         axis.set_ylabel("True Positive Rate")
+        axis.set_xlim(0, 1)
+        axis.set_ylim(0, 1)
         axis.legend()
         axis.grid(True, alpha=0.3)
 

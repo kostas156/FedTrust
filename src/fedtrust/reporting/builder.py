@@ -45,10 +45,12 @@ class AssessmentBuilder:
                 )
             )
 
+        overall_severity = self._calculate_overall_severity(severities)
+
         return AssessmentReport(
             title="FedTrust Trustworthiness Assessment",
-            executive_summary=self._build_executive_summary(severities),
-            overall_severity=self._calculate_overall_severity(severities),
+            executive_summary=self._build_executive_summary(sections, overall_severity),
+            overall_severity=overall_severity,
             sections=sections,
         )
 
@@ -61,17 +63,46 @@ class AssessmentBuilder:
         return f"The {report.name} evaluation completed successfully."
 
     @staticmethod
-    def _build_executive_summary(severities: list[AssessmentSeverity]) -> str:
+    def _build_executive_summary(
+        sections: list[AssessmentSection],
+        overall_severity: AssessmentSeverity,
+    ) -> str:
         """Build the report-level executive summary."""
-        if not severities:
-            return "No significant findings were identified by the available evaluations."
+        findings = [finding for section in sections for finding in section.findings]
 
-        highest = AssessmentBuilder._calculate_overall_severity(severities)
+        if not findings:
+            return (
+                "The available evaluations identified no significant findings. "
+                "The assessed system currently shows no material issues "
+                "under the evaluated criteria."
+            )
 
-        return (
-            "The evaluation identified findings requiring attention. "
-            f"The highest observed severity is {highest.value.upper()}."
+        highest_priority_findings = [
+            finding
+            for finding in findings
+            if finding.severity
+            in {
+                AssessmentSeverity.CRITICAL,
+                AssessmentSeverity.HIGH,
+            }
+        ]
+
+        summary = (
+            f"Overall assessment: {overall_severity.value.upper()}. "
+            f"The evaluation identified {len(findings)} finding"
         )
+
+        if len(findings) != 1:
+            summary += "s"
+
+        summary += " requiring attention."
+
+        if highest_priority_findings:
+            titles = [finding.title for finding in highest_priority_findings[:2]]
+
+            summary += " The most significant findings are: " + "; ".join(titles) + "."
+
+        return summary
 
     @staticmethod
     def _calculate_overall_severity(severities: list[AssessmentSeverity]) -> AssessmentSeverity:

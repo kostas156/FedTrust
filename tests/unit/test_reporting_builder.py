@@ -77,3 +77,35 @@ def test_builder_combines_multiple_evaluations() -> None:
 
     assert len(assessment.sections) == 2
     assert assessment.overall_severity is AssessmentSeverity.CRITICAL
+
+
+def test_builder_creates_meaningful_executive_summary() -> None:
+    """Builder includes important findings in the executive summary."""
+    reports = [
+        EvaluationReport(
+            name="classification",
+            status=EvaluationStatus.SUCCESS,
+            metrics=[
+                MetricResult(
+                    name="accuracy",
+                    value=0.70,
+                ),
+            ],
+        ),
+        EvaluationReport(
+            name="membership_inference",
+            status=EvaluationStatus.SUCCESS,
+            metrics=[
+                MetricResult(
+                    name="mia_auc",
+                    value=0.85,
+                ),
+            ],
+        ),
+    ]
+
+    assessment = AssessmentBuilder().build(reports)
+
+    assert "Overall assessment: CRITICAL." in assessment.executive_summary
+    assert "Low model performance" in assessment.executive_summary
+    assert "Critical membership leakage" in assessment.executive_summary
